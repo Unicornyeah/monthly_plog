@@ -270,13 +270,36 @@ const today=new Date()
 const [year,setYear]=useState(today.getFullYear())
 const [month,setMonth]=useState(today.getMonth())
 
-const [images,setImages]=useState(()=>{
-const saved=localStorage.getItem("uplog_images")
-return saved?JSON.parse(saved):{}
-})
+const [images,setImages]=useState({})
+
+/* IndexedDB persistence (much larger and safer than localStorage) */
+useEffect(()=>{
+ const req=indexedDB.open('uplogDB',1)
+ req.onupgradeneeded=e=>{
+  const db=e.target.result
+  if(!db.objectStoreNames.contains('images')){
+   db.createObjectStore('images')
+  }
+ }
+ req.onsuccess=e=>{
+  const db=e.target.result
+  const tx=db.transaction('images','readonly')
+  const store=tx.objectStore('images')
+  const g=store.get('data')
+  g.onsuccess=()=>{
+   if(g.result) setImages(g.result)
+  }
+ }
+},[])
 
 useEffect(()=>{
-localStorage.setItem("uplog_images",JSON.stringify(images))
+ const req=indexedDB.open('uplogDB',1)
+ req.onsuccess=e=>{
+  const db=e.target.result
+  const tx=db.transaction('images','readwrite')
+  const store=tx.objectStore('images')
+  store.put(images,'data')
+ }
 },[images])
 
 const [cropSrc,setCropSrc]=useState(null)
@@ -363,23 +386,26 @@ function makeIt(){
 
 if(!imgRef.current)return
 
-const size=700
-
+// smaller canvas prevents mobile memory crash when many photos are added
+const size=512
 const canvas=document.createElement("canvas")
 canvas.width=size
 canvas.height=size
-
 const ctx=canvas.getContext("2d")
 
 const img=imgRef.current
 
+/* match preview exactly by converting from CSS size to natural pixels */
+const rect=img.getBoundingClientRect()
+const naturalScaleX=img.naturalWidth/rect.width
+const naturalScaleY=img.naturalHeight/rect.height
+
 const center=size/2
 
-const drawW=img.naturalWidth*scale
-const drawH=img.naturalHeight*scale
+const drawW=rect.width*naturalScaleX*scale
+const drawH=rect.height*naturalScaleY*scale
 
 ctx.save()
-
 ctx.beginPath()
 ctx.rect(0,0,size,size)
 ctx.clip()
@@ -396,7 +422,8 @@ ctx.drawImage(
 
 ctx.restore()
 
-const url=canvas.toDataURL("image/png")
+// compress image to reduce memory + localStorage size
+const url=canvas.toDataURL("image/jpeg",0.82)
 
 const key=`${year}-${month}-${cropDay}`
 
@@ -409,6 +436,7 @@ color:macaron[Math.floor(Math.random()*macaron.length)]
 }))
 
 setCropSrc(null)
+
 
 }
 
