@@ -326,7 +326,7 @@ const reader=new FileReader()
 reader.onload=ev=>{
 setCropSrc(ev.target.result)
 setCropDay(day)
-setScale(1)
+setScale(1) // temporary, real fit happens on image load
 setPos({x:0,y:0})
 }
 reader.readAsDataURL(file)
@@ -365,7 +365,7 @@ const ratio=dist/lastDist.current
 
 setScale(s=>{
 let next=s*ratio
-if(next<0.35)next=0.35
+if(next<0.2)next=0.2
 if(next>4)next=4
 return next
 })
@@ -402,8 +402,9 @@ const naturalScaleY=img.naturalHeight/rect.height
 
 const center=size/2
 
-const drawW=rect.width*naturalScaleX*scale
-const drawH=rect.height*naturalScaleY*scale
+/* rect already includes CSS scale from transform, avoid double scaling */
+const drawW=rect.width*naturalScaleX
+const drawH=rect.height*naturalScaleY
 
 ctx.save()
 ctx.beginPath()
@@ -567,7 +568,7 @@ return(
 <div
 id={key}
 className="photoBorder"
-style={{border:`6px solid ${img.color}`,borderRadius:"10px"}}
+style={{border:`4px solid ${img.color}`,borderRadius:"10px"}}
 onClick={(e)=>{e.stopPropagation();remove(key)}}
 >
 
@@ -604,6 +605,15 @@ onTouchEnd={touchEnd}
 
 <img
 ref={imgRef}
+onLoad={(e)=>{
+ const img=e.target
+ const frame=320
+ const nw=img.naturalWidth
+ const nh=img.naturalHeight
+ const fit=Math.max(frame/nw,frame/nh)
+ setScale(fit)
+ setPos({x:0,y:0})
+}}
 src={cropSrc}
 style={{transform:`translate(-50%,-50%) translate(${pos.x}px,${pos.y}px) scale(${scale})`}}
 />
@@ -616,7 +626,7 @@ style={{transform:`translate(-50%,-50%) translate(${pos.x}px,${pos.y}px) scale($
 
 <input
  type="range"
- min="0.35"
+ min="0.2"
  max="4"
  step="0.01"
  value={scale}
