@@ -386,7 +386,6 @@ function makeIt(){
 
 if(!imgRef.current)return
 
-// smaller canvas prevents mobile memory crash when many photos are added
 const size=512
 const canvas=document.createElement("canvas")
 canvas.width=size
@@ -395,23 +394,19 @@ const ctx=canvas.getContext("2d")
 
 const img=imgRef.current
 
-/* match preview exactly by converting from CSS size to natural pixels */
-const rect=img.getBoundingClientRect()
-const naturalScaleX=img.naturalWidth/rect.width
-const naturalScaleY=img.naturalHeight/rect.height
-
+const frame=320
+const factor=size/frame
 const center=size/2
 
-/* rect already includes CSS scale from transform, avoid double scaling */
-const drawW=rect.width*naturalScaleX
-const drawH=rect.height*naturalScaleY
+const drawW=img.naturalWidth*scale*factor
+const drawH=img.naturalHeight*scale*factor
 
 ctx.save()
 ctx.beginPath()
 ctx.rect(0,0,size,size)
 ctx.clip()
 
-ctx.translate(center+pos.x,center+pos.y)
+ctx.translate(center+pos.x*factor,center+pos.y*factor)
 
 ctx.drawImage(
  img,
@@ -423,7 +418,6 @@ ctx.drawImage(
 
 ctx.restore()
 
-// compress image to reduce memory + localStorage size
 const url=canvas.toDataURL("image/jpeg",0.82)
 
 const key=`${year}-${month}-${cropDay}`
@@ -437,7 +431,6 @@ color:macaron[Math.floor(Math.random()*macaron.length)]
 }))
 
 setCropSrc(null)
-
 
 }
 
